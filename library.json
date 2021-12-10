@@ -1,0 +1,21 @@
+{
+  "name": "uIO",
+  "version": "0.0.0",
+  "description": "uIO is a template API for efficiently managing AVR register and port I/O",
+  "keywords": "Arduino",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/trevor-makes/uIO.git"
+  },
+  "authors":
+  [
+    {
+      "name": "Trevor Makes",
+      "email": "the.trevor.makes@gmail.com",
+      "maintainer": true
+    }
+  ],
+  "frameworks": "arduino",
+  "platforms": "atmelavr"
+}
