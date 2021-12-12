@@ -9,149 +9,135 @@ namespace uIO {
 
 template <typename DDR, typename PORT, typename PIN>
 struct Port {
-  struct Write : PORT {
-    // Set bits in DDR to select write mode
-    static void enable_write() { DDR::write(~0); }
-    // Set bits in PIN to flip (xor) bits in PORT
-    static void bitwise_xor(uint8_t value) { PIN::write(value); }
+  struct Output : PORT {
+    static void bitwise_xor(uint8_t value) {
+      PIN::write(value); //< Set bits in PIN to flip (xor) bits in PORT
+    }
   };
-  struct Read : PIN {
-    // Clear bits in DDR to select read mode
-    static void enable_read() { DDR::write(0); }
-    // Set bits in PORT to enable pullups
-    static void enable_pullups() { PORT::write(~0); }
-    // Clear bits in PORT to disable pullups
-    static void disable_pullups() { PORT::write(0); }
-  };
+  using Input = PIN;
+  static void config_output() {
+    DDR::write(~0); //< Set bits in DDR to select write mode
+  }
+  static void config_input() {
+    PORT::write(0); //< Clear bits in PORT to disable pullups
+    DDR::write(0); //< Clear bits in DDR to select read mode
+  }
+  static void config_input_pullups() {
+    PORT::write(~0); //< Set bits in PORT to enable pullups
+    DDR::write(0); //< Clear bits in DDR to select read mode
+  }
+
   // Select bit within I/O port
   template <uint8_t BIT>
   struct Bit {
-    struct Write : PORT::template Bit<BIT> {
-        // Set bit BIT in DDR to select write mode
-      static void enable_write() { DDR::template Bit<BIT>::set(); }
-      // Set bit BIT in PIN to flip bit in PORT
-      static void flip() { PIN::template Bit<BIT>::set(); }
+    struct Output : PORT::template Bit<BIT> {
+      static void flip() {
+        PIN::template Bit<BIT>::set(); //< Set bit BIT in PIN to flip bit in PORT
+      }
     };
-    struct Read : PIN::template Bit<BIT> {
-      // Clear bit BIT in DDR to select read mode
-      static void enable_read() { DDR::template Bit<BIT>::clear(); }
-      // Set bit BIT in PORT to enable pullups
-      static void enable_pullups() { PORT::template Bit<BIT>::set(); }
-      // Clear bit BIT in PORT to disable pullups
-      static void disable_pullups() { PORT::template Bit<BIT>::clear(); }
-    };
+    using Input = typename PIN::template Bit<BIT>;
+    static void config_output() {
+      DDR::template Bit<BIT>::set(); //< Set bit BIT in DDR to select write mode
+    }
+    static void config_input() {
+      PORT::template Bit<BIT>::clear(); //< Set bit BIT in PORT to enable pullups
+      DDR::template Bit<BIT>::clear(); //< Clear bit BIT in DDR to select read mode
+    }
+    static void config_input_pullups() {
+      PORT::template Bit<BIT>::set(); //< Clear bit BIT in PORT to disable pullups
+      DDR::template Bit<BIT>::clear(); //< Clear bit BIT in DDR to select read mode
+    }
   };
+
   // Select masked region within I/O port
   template <uint8_t MASK>
-  struct Mask {
-    struct Write : PORT::template Mask<MASK> {
-      // Set MASK bits in DDR to select write mode
-      static void enable_write() { DDR::template Mask<MASK>::bitwise_or(MASK); }
-      // Set MASK bits in PIN to flip (xor) bits in PORT
-      static void bitwise_xor(uint8_t value) { PIN::template Mask<MASK>::bitwise_or(value); }
-    };
-    struct Read : PIN::template Mask<MASK> {
-      // Clear MASK bits in DDR to select read mode
-      static void enable_read() { DDR::template Mask<MASK>::bitwise_and(0); }
-      // Set MASK bits in PORT to enable pullups
-      static void enable_pullups() { PORT::template Mask<MASK>::bitwise_or(MASK); }
-      // Clear MASK bits in PORT to disable pullups
-      static void disable_pullups() { PORT::template Mask<MASK>::bitwise_and(0); }
-    };
-  };
+  using Mask = Port<
+    typename DDR::template Mask<MASK>,
+    typename PORT::template Mask<MASK>,
+    typename PIN::template Mask<MASK>>;
 };
 
 // TODO can we do some template magic to coalesce I/O if Port1 and Port2 are same register?
 template <typename Port1, typename Port2>
 struct PortSplitter {
-  struct Write {
-    // Select write mode for both ports
-    static void enable_write() {
-      Port1::Write::enable_write();
-      Port2::Write::enable_write();
-    }
+  struct Output {
     // XOR value to both ports
     static void bitwise_xor(uint8_t value) {
-      Port1::Write::bitwise_xor(value);
-      Port2::Write::bitwise_xor(value);
+      Port1::Output::bitwise_xor(value);
+      Port2::Output::bitwise_xor(value);
     }
     // Write value to both ports
     static void write(uint8_t value) {
-      Port1::Write::write(value);
-      Port2::Write::write(value);
+      Port1::Output::write(value);
+      Port2::Output::write(value);
     }
     // Read value from both ports
     static uint8_t read() {
-      return Port1::Write::read() | Port2::Write::read();
+      return Port1::Output::read() | Port2::Output::read();
     }
   };
-  struct Read {
-    // Select read mode for both ports
-    static void enable_read() {
-      Port1::Read::enable_read();
-      Port2::Read::enable_read();
-    }
-    // Enable pullups on both ports
-    static void enable_pullups() {
-      Port1::Read::enable_pullups();
-      Port2::Read::enable_pullups();
-    }
-    // Disable pullups on both ports
-    static void disable_pullups() {
-      Port1::Read::disable_pullups();
-      Port2::Read::disable_pullups();
-    }
+  struct Input {
     // Read value from both ports
     static uint8_t read() {
-      return Port1::Read::read() | Port2::Read::read();
+      return Port1::Input::read() | Port2::Input::read();
     }
   };
+  // Select write mode for both ports
+  static void config_output() {
+    Port1::config_output();
+    Port2::config_output();
+  }
+  // Select read mode for both ports
+  static void config_input() {
+    Port1::config_input();
+    Port2::config_input();
+  }
+  // Select read mode with pullups on both ports
+  static void config_input_pullups() {
+    Port1::config_input_pullups();
+    Port2::config_input_pullups();
+  }
 };
 
 template <typename LSB, typename MSB>
 struct Port16 {
-  struct Write {
-    // Select write mode for both ports
-    static void enable_write() {
-      MSB::Write::enable_write();
-      LSB::Write::enable_write();
-    }
+  struct Output {
     // XOR 16-bit value to high and low ports
     static void bitwise_xor(uint16_t value) {
-      MSB::Write::bitwise_xor(value >> 8);
-      LSB::Write::bitwise_xor(value & 0xFF);
+      MSB::Output::bitwise_xor(value >> 8);
+      LSB::Output::bitwise_xor(value & 0xFF);
     }
     // Write 16-bit value to high and low ports
     static void write(uint16_t value) {
-      MSB::Write::write(value >> 8);
-      LSB::Write::write(value & 0xFF);
+      MSB::Output::write(value >> 8);
+      LSB::Output::write(value & 0xFF);
     }
     // Read 16-bit value from high and low ports
     static uint16_t read() {
-      return (uint16_t(MSB::Write::read()) << 8) | (LSB::Write::read() & 0xFF);
+      return (uint16_t(MSB::Output::read()) << 8) | (LSB::Output::read() & 0xFF);
     }
   };
-  struct Read {
-    // Select read mode for both ports
-    static void enable_read() {
-      MSB::Read::enable_read();
-      LSB::Read::enable_read();
-    }
-    // Enable pullups on both ports
-    static void enable_pullups() {
-      MSB::Read::enable_pullups();
-      LSB::Read::enable_pullups();
-    }
-    // Disable pullups on both ports
-    static void disable_pullups() {
-      MSB::Read::disable_pullups();
-      LSB::Read::disable_pullups();
-    }
+  struct Input {
     // Read 16-bit value from high and low ports
     static uint16_t read() {
-      return (uint16_t(MSB::Read::read()) << 8) | (LSB::Read::read() & 0xFF);
+      return (uint16_t(MSB::Input::read()) << 8) | (LSB::Input::read() & 0xFF);
     }
   };
+  // Select write mode for both ports
+  static void config_output() {
+    MSB::config_output();
+    LSB::config_output();
+  }
+  // Select read mode for both ports
+  static void config_input() {
+    MSB::config_input();
+    LSB::config_input();
+  }
+  // Select read mode with pullups for both ports
+  static void config_input_pullups() {
+    MSB::config_input_pullups();
+    LSB::config_input_pullups();
+  }
 };
 
 // Single bit register operations
