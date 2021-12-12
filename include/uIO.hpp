@@ -154,41 +154,47 @@ struct Port16 {
   };
 };
 
-// TODO can we nest Bit or Mask subtypes in Mask?
+// Single bit register operations
+#define uIO_REG_BIT(REG) \
+template <uint8_t BIT, uint8_t MASK = (1 << BIT)> \
+struct Bit { \
+  /* Set bit; emits SBI */ \
+  static void set() { (REG) |= MASK; } \
+  /* Clear bit; emits CBI */ \
+  static void clear() { (REG) &= ~MASK; } \
+  /* Test if bit is clear; use with `if (is_clear)` to emit SBIS */ \
+  static bool is_clear() { return !((REG) & MASK); } \
+  /* Test if bit is set; use with `if (set)` to emit SBIC */ \
+  static bool is_set() { return !is_clear(); } \
+};
+
+// Masked register operations
+#define uIO_REG_MASK(REG) \
+template <uint8_t MASK> \
+struct Mask { \
+  /* Read from I/O register; emits IN, ANDI */ \
+  static uint8_t read() { return (REG) & MASK; } \
+  /* Write to I/O register; emits IN, ANDI, (ANDI,) OR, OUT */ \
+  static void write(uint8_t value) { (REG) = ((REG) & ~MASK) | (value & MASK); } \
+  /* Apply bitwise OR; emits to IN, (ANDI,) OR, OUT */ \
+  static void bitwise_or(uint8_t value) { (REG) |= value & MASK; } \
+  /* Apply bitwise AND; emits to IN, (ORI,) AND, OUT */ \
+  static void bitwise_and(uint8_t value) { (REG) &= value | ~MASK; } \
+};
+
+// Unmasked register operations
 #define uIO_REG(REG) \
 struct Reg##REG { \
+  uIO_REG_BIT(REG) \
+  uIO_REG_MASK(REG) \
   /* Read from I/O register; emits IN */ \
   static uint8_t read() { return (REG); } \
   /* Write to I/O register; emits OUT */ \
   static void write(uint8_t value) { (REG) = value; } \
-  /* Apply bitwise OR; emits to IN, (ANDI,) OR, OUT */ \
+  /* Apply bitwise OR; emits to IN, OR, OUT */ \
   static void bitwise_or(uint8_t value) { (REG) |= value; } \
-  /* Apply bitwise AND; emits to IN, (ORI,) AND, OUT */ \
+  /* Apply bitwise AND; emits to IN, AND, OUT */ \
   static void bitwise_and(uint8_t value) { (REG) &= value; } \
-  /* Select bit within I/O register */ \
-  template <uint8_t BIT, uint8_t MASK = (1 << BIT)> \
-  struct Bit { \
-    /* Set bit; emits SBI */ \
-    static void set() { (REG) |= MASK; } \
-    /* Clear bit; emits CBI */ \
-    static void clear() { (REG) &= ~MASK; } \
-    /* Test if bit is clear; use with `if (is_clear)` to emit SBIS */ \
-    static bool is_clear() { return !((REG) & MASK); } \
-    /* Test if bit is set; use with `if (set)` to emit SBIC */ \
-    static bool is_set() { return !is_clear(); } \
-  }; \
-  /* Select masked region within I/O register */ \
-  template <uint8_t MASK> \
-  struct Mask { \
-    /* Read from I/O register; emits IN, ANDI */ \
-    static uint8_t read() { return (REG) & MASK; } \
-    /* Write to I/O register; emits IN, ANDI, (ANDI,) OR, OUT */ \
-    static void write(uint8_t value) { (REG) = ((REG) & ~MASK) | (value & MASK); } \
-    /* Apply bitwise OR; emits to IN, (ANDI,) OR, OUT */ \
-    static void bitwise_or(uint8_t value) { (REG) |= value & MASK; } \
-    /* Apply bitwise AND; emits to IN, (ORI,) AND, OUT */ \
-    static void bitwise_and(uint8_t value) { (REG) &= value | ~MASK; } \
-  }; \
 };
 
 #define uIO_PIN(X, N) \
