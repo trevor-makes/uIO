@@ -7,8 +7,16 @@
 
 namespace uIO {
 
+// Return true if mask has a single set bit (mask is a power of two)
+constexpr bool is_single_bit(uint8_t mask) {
+  return mask != 0 && (mask & (mask - 1)) == 0;
+}
+
 template <typename DDR, typename PORT, typename PIN>
 struct Port {
+  static_assert((DDR::MASK == PORT::MASK) && (PORT::MASK == PIN::MASK),
+    "Parameters DDR, PORT, and PIN should have the same masks");
+
   struct Output : PORT {
     static void bitwise_xor(uint8_t value) {
       PIN::write(value); //< Set bits in PIN to flip (xor) bits in PORT
@@ -173,6 +181,7 @@ struct Port16 {
   /* Masked register operations */ \
   template <uint8_t MASK> \
   struct RegMask##REG : RegBase##REG<MASK> { \
+    static_assert(MASK != 0, "MASK parameter should be non-zero"); \
     /* Read from I/O register; emits IN, ANDI */ \
     static uint8_t read() { return (REG) & MASK; } \
     /* Write to I/O register; emits IN, ANDI, (ANDI,) OR, OUT */ \
@@ -186,6 +195,7 @@ struct Port16 {
   /* Single bit register operations */ \
   template <uint8_t MASK> \
   struct RegBit##REG : RegMask##REG<MASK> { \
+    static_assert(uIO::is_single_bit(MASK), "MASK parameter should have a single set bit"); \
     /* Set bit; emits SBI */ \
     static void set() { (REG) |= MASK; } \
     /* Clear bit; emits CBI */ \
