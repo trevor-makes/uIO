@@ -12,7 +12,7 @@ void copy_portC_to_portD() {
     PortD::config_output(); // DDRD = 0xFF; [LDI, OUT]
 
     // Read from port C and write value to port D
-    PortD::Output::write(PortC::Input::read()); // PORTD = PINC; [IN, OUT]
+    PortD::write(PortC::read()); // PORTD = PINC; [IN, OUT]
 }
 
 // True for Arduino Uno; use different pin for other boards
@@ -26,10 +26,10 @@ void setup() {
 // Blink LED at 1/2 Hz
 void loop() {
     // Set pin high for 1 second
-    LEDPin::Output::set(); // PORTB |= (1 << 5); [SBI]
+    LEDPin::set(); // PORTB |= (1 << 5); [SBI]
     delay(1000);
 
     // Set pin low for 1 second
-    LEDPin::Output::clear(); // PORTB &= ~(1 << 5); [CBI]
+    LEDPin::clear(); // PORTB &= ~(1 << 5); [CBI]
     delay(1000);
 }
