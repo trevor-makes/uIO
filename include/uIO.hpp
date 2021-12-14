@@ -7,11 +7,6 @@
 
 namespace uIO {
 
-// Return true if mask has a single set bit (mask is a power of two)
-constexpr bool is_single_bit(uint8_t mask) {
-  return mask != 0 && (mask & (mask - 1)) == 0;
-}
-
 template <typename DDR, typename PORT, typename PIN>
 struct Port : PORT::Output, PIN::Input {
   static_assert((DDR::MASK == PORT::MASK) && (PORT::MASK == PIN::MASK),
@@ -161,7 +156,8 @@ struct Port16 {
 };
 
 #define uIO_REG(REG) \
-  template <uint8_t MASK> \
+  template <uint8_t BIT, \
+    uint8_t MASK = 1 << BIT> \
   struct RegBit##REG; \
   \
   template <uint8_t MASK, \
@@ -175,7 +171,7 @@ struct Port16 {
     static const uint8_t MASK = M; \
     /* Select single bit within register */ \
     template <uint8_t BIT> \
-    using Bit = RegBit##REG<1 << BIT>; \
+    using Bit = RegBit##REG<BIT>; \
     /* Select masked subfield within register */ \
     template <uint8_t SUBMASK> \
     using Mask = RegMask##REG<SUBMASK>; \
@@ -228,10 +224,10 @@ struct Port16 {
   }; \
   \
   /* Single bit register operations */ \
-  template <uint8_t MASK> \
+  template <uint8_t BIT, uint8_t MASK> \
   struct RegBit##REG : RegMask##REG<MASK> { \
-    static_assert(uIO::is_single_bit(MASK), \
-      "Bit register should have MASK parameter with single set bit"); \
+    static_assert(MASK == 1 << BIT, \
+      "Bit register MASK parameter should be set to 1 << BIT"); \
     struct Output : RegMask##REG<MASK>::Output { \
       /* Set bit; emits SBI */ \
       static void set() { (REG) |= MASK; } \
