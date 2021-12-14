@@ -55,6 +55,18 @@ struct Port : PORT::Output, PIN::Input {
   }
 };
 
+// Virtual port that discards writes
+struct PortNull {
+  static void bitwise_xor(uint8_t) {}
+  static void bitwise_or(uint8_t) {}
+  static void bitwise_and(uint8_t) {}
+  static void write(uint8_t) {}
+  static uint8_t read() { return 0; }
+  static void config_output() {}
+  static void config_input() {}
+  static void config_input_pullups() {}
+};
+
 template <typename Port1, typename Port2>
 struct PortJoin {
   // XOR value to both ports
