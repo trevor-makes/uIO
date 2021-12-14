@@ -71,41 +71,46 @@ struct Port {
   }
 };
 
-// TODO can we do some template magic to coalesce I/O if Port1 and Port2 are same register?
 template <typename Port1, typename Port2>
-struct PortSplitter {
+struct PortJoin {
   struct Output {
     // XOR value to both ports
     static void bitwise_xor(uint8_t value) {
       Port1::Output::bitwise_xor(value);
       Port2::Output::bitwise_xor(value);
     }
+
     // Write value to both ports
     static void write(uint8_t value) {
       Port1::Output::write(value);
       Port2::Output::write(value);
     }
+
     // Read value from both ports
     static uint8_t read() {
       return Port1::Output::read() | Port2::Output::read();
     }
   };
+
   struct Input {
     // Read value from both ports
     static uint8_t read() {
       return Port1::Input::read() | Port2::Input::read();
     }
   };
+
   // Select write mode for both ports
   static void config_output() {
     Port1::config_output();
     Port2::config_output();
   }
+
   // Select read mode for both ports
   static void config_input() {
     Port1::config_input();
     Port2::config_input();
   }
+
   // Select read mode with pullups on both ports
   static void config_input_pullups() {
     Port1::config_input_pullups();
@@ -121,32 +126,38 @@ struct Port16 {
       MSB::Output::bitwise_xor(value / 0x100);
       LSB::Output::bitwise_xor(value & 0xFF);
     }
+
     // Write 16-bit value to high and low ports
     static void write(uint16_t value) {
       MSB::Output::write(value / 0x100);
       LSB::Output::write(value & 0xFF);
     }
+
     // Read 16-bit value from high and low ports
     static uint16_t read() {
       return (uint16_t(MSB::Output::read()) * 0x100) | (LSB::Output::read() & 0xFF);
     }
   };
+
   struct Input {
     // Read 16-bit value from high and low ports
     static uint16_t read() {
       return (uint16_t(MSB::Input::read()) * 0x100) | (LSB::Input::read() & 0xFF);
     }
   };
+
   // Select write mode for both ports
   static void config_output() {
     MSB::config_output();
     LSB::config_output();
   }
+
   // Select read mode for both ports
   static void config_input() {
     MSB::config_input();
     LSB::config_input();
   }
+
   // Select read mode with pullups for both ports
   static void config_input_pullups() {
     MSB::config_input_pullups();
