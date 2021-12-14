@@ -152,8 +152,10 @@ struct Port16 {
   template <uint8_t MASK> \
   struct RegBit##REG; \
   \
-  template <uint8_t MASK> \
+  template <uint8_t MASK, bool B = (MASK == 0xFF)> \
   struct RegMask##REG; \
+  \
+  using Reg##REG = RegMask##REG<0xFF>; \
   \
   template <uint8_t M> \
   struct RegBase##REG { \
@@ -167,7 +169,10 @@ struct Port16 {
   }; \
   \
   /* Unmasked register operations */ \
-  struct Reg##REG : RegBase##REG<0xFF> { \
+  template <uint8_t MASK> \
+  struct RegMask##REG<MASK, true> : RegBase##REG<MASK> { \
+    static_assert(MASK == 0xFF, \
+      "Unmasked register should have MASK 0xFF"); \
     /* Read from I/O register; emits IN */ \
     static uint8_t read() { return (REG); } \
     /* Write to I/O register; emits OUT */ \
@@ -180,8 +185,9 @@ struct Port16 {
   \
   /* Masked register operations */ \
   template <uint8_t MASK> \
-  struct RegMask##REG : RegBase##REG<MASK> { \
-    static_assert(MASK != 0, "MASK parameter should be non-zero"); \
+  struct RegMask##REG<MASK, false> : RegBase##REG<MASK> { \
+    static_assert(MASK != 0 && MASK != 0xFF, \
+      "Masked register should have non-zero MASK less than 0xFF"); \
     /* Read from I/O register; emits IN, ANDI */ \
     static uint8_t read() { return (REG) & MASK; } \
     /* Write to I/O register; emits IN, ANDI, (ANDI,) OR, OUT */ \
@@ -195,7 +201,8 @@ struct Port16 {
   /* Single bit register operations */ \
   template <uint8_t MASK> \
   struct RegBit##REG : RegMask##REG<MASK> { \
-    static_assert(uIO::is_single_bit(MASK), "MASK parameter should have a single set bit"); \
+    static_assert(uIO::is_single_bit(MASK), \
+      "Bit register should have MASK parameter with single set bit"); \
     /* Set bit; emits SBI */ \
     static void set() { (REG) |= MASK; } \
     /* Clear bit; emits CBI */ \
