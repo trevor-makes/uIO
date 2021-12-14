@@ -15,20 +15,10 @@ constexpr bool is_single_bit(uint8_t mask) {
 template <typename DDR, typename PORT, typename PIN>
 struct PortBit;
 
-template <typename DDR, typename PORT, typename PIN,
-  bool B = (PORT::MASK == 0xFF)>
-struct PortMask;
-
-template <typename DDR, typename PORT, typename PIN>
-using Port = PortMask<DDR, PORT, PIN>;
-
 template <typename DDR, typename PORT, typename PIN>
 struct PortBase {
   static_assert((DDR::MASK == PORT::MASK) && (PORT::MASK == PIN::MASK),
     "Parameters DDR, PORT, and PIN should have the same masks");
-
-  // Select port input register
-  using Input = PIN;
 
   // Select bit within I/O port
   template <uint8_t BIT>
@@ -39,17 +29,10 @@ struct PortBase {
 
   // Select masked region within I/O port
   template <uint8_t MASK>
-  using Mask = PortMask<
+  using Mask = PortBase<
     typename DDR::template Mask<MASK>,
     typename PORT::template Mask<MASK>,
     typename PIN::template Mask<MASK>>;
-};
-
-// Operations for unmasked ports (MASK = 0xFF)
-template <typename DDR, typename PORT, typename PIN>
-struct PortMask<DDR, PORT, PIN, true> : PortBase<DDR, PORT, PIN> {
-  static_assert(PORT::MASK == 0xFF,
-    "Unmasked register should have MASK 0xFF");
 
   // Select port output register
   struct Output : PORT {
@@ -57,6 +40,9 @@ struct PortMask<DDR, PORT, PIN, true> : PortBase<DDR, PORT, PIN> {
       PIN::write(value); //< Set bits in PIN to flip (xor) bits in PORT
     }
   };
+
+  // Select port input register
+  using Input = PIN;
 
   // Configure port as output
   static void config_output() {
@@ -76,50 +62,22 @@ struct PortMask<DDR, PORT, PIN, true> : PortBase<DDR, PORT, PIN> {
   }
 };
 
-// Operations for masked ports (MASK != 0xFF)
-template <typename DDR, typename PORT, typename PIN>
-struct PortMask<DDR, PORT, PIN, false> : PortBase<DDR, PORT, PIN> {
-  static_assert(PORT::MASK != 0xFF,
-    "Masked port should have non-zero MASK less than 0xFF");
-
-  // Select port output register
-  struct Output : PORT {
-    static void bitwise_xor(uint8_t value) {
-      PIN::bitwise_or(value); //< Set bits in PIN to flip (xor) bits in PORT
-    }
-  };
-
-  // Configure port as output
-  static void config_output() {
-    DDR::bitwise_or(DDR::MASK); //< Set bits in DDR to select write mode
-  }
-
-  // Configure port as input
-  static void config_input() {
-    PORT::bitwise_and(0); //< Clear bits in PORT to disable pullups
-    DDR::bitwise_and(0); //< Clear bits in DDR to select read mode
-  }
-
-  // Configure port as input with pullup registers
-  static void config_input_pullups() {
-    PORT::bitwise_or(PORT::MASK); //< Set bits in PORT to enable pullups
-    DDR::bitwise_and(0); //< Clear bits in DDR to select read mode
-  }
-};
-
 // Operations for bit ports (MASK is a single bit)
 template <typename DDR, typename PORT, typename PIN>
-struct PortBit : PortMask<DDR, PORT, PIN> {
+struct PortBit : PortBase<DDR, PORT, PIN> {
   static_assert(is_single_bit(PORT::MASK),
     "Bit register should have MASK parameter with single set bit");
 
   // Select port output register
-  struct Output : PortMask<DDR, PORT, PIN>::Output {
+  struct Output : PortBase<DDR, PORT, PIN>::Output {
     static void flip() {
       PIN::set(); //< Set bit BIT in PIN to flip bit in PORT
     }
   };
 };
+
+template <typename DDR, typename PORT, typename PIN>
+using Port = PortBase<DDR, PORT, PIN>;
 
 // TODO can we do some template magic to coalesce I/O if Port1 and Port2 are same register?
 template <typename Port1, typename Port2>
