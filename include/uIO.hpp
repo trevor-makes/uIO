@@ -13,23 +13,32 @@ constexpr bool is_single_bit(uint8_t mask) {
 }
 
 template <typename DDR, typename PORT, typename PIN>
-struct PortBit;
-
-template <typename DDR, typename PORT, typename PIN>
-struct PortBase {
+struct Port {
   static_assert((DDR::MASK == PORT::MASK) && (PORT::MASK == PIN::MASK),
     "Parameters DDR, PORT, and PIN should have the same masks");
 
   // Select bit within I/O port
   template <uint8_t BIT>
-  using Bit = PortBit<
+  struct Bit : Port<
     typename DDR::template Bit<BIT>,
     typename PORT::template Bit<BIT>,
-    typename PIN::template Bit<BIT>>;
+    typename PIN::template Bit<BIT>> {
+
+    // Select port output register
+    struct Output : Port<
+      typename DDR::template Bit<BIT>,
+      typename PORT::template Bit<BIT>,
+      typename PIN::template Bit<BIT>>::Output {
+
+      static void flip() {
+        PIN::set(); //< Set bit BIT in PIN to flip bit in PORT
+      }
+    };
+  };
 
   // Select masked region within I/O port
   template <uint8_t MASK>
-  using Mask = PortBase<
+  using Mask = Port<
     typename DDR::template Mask<MASK>,
     typename PORT::template Mask<MASK>,
     typename PIN::template Mask<MASK>>;
@@ -61,23 +70,6 @@ struct PortBase {
     DDR::write(0); //< Clear bits in DDR to select read mode
   }
 };
-
-// Operations for bit ports (MASK is a single bit)
-template <typename DDR, typename PORT, typename PIN>
-struct PortBit : PortBase<DDR, PORT, PIN> {
-  static_assert(is_single_bit(PORT::MASK),
-    "Bit register should have MASK parameter with single set bit");
-
-  // Select port output register
-  struct Output : PortBase<DDR, PORT, PIN>::Output {
-    static void flip() {
-      PIN::set(); //< Set bit BIT in PIN to flip bit in PORT
-    }
-  };
-};
-
-template <typename DDR, typename PORT, typename PIN>
-using Port = PortBase<DDR, PORT, PIN>;
 
 // TODO can we do some template magic to coalesce I/O if Port1 and Port2 are same register?
 template <typename Port1, typename Port2>
