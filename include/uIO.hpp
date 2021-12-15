@@ -137,20 +137,10 @@ struct Port16 {
     PortLSB::bitwise_and(value & 0xFF);
   }
 
-  // Write upper byte of value to upper port
-  static void write_msb(uint16_t value) {
-    PortMSB::write(value / 0x100);
-  }
-
-  // Write lower byte of value to lower port
-  static void write_lsb(uint16_t value) {
-    PortLSB::write(value & 0xFF);
-  }
-
   // Write 16-bit value to high and low ports
   static void write(uint16_t value) {
-    write_msb(value);
-    write_lsb(value);
+    PortMSB::write(value / 0x100);
+    PortLSB::write(value & 0xFF);
   }
 
   // Read 16-bit value from high and low ports
