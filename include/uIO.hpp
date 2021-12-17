@@ -14,16 +14,10 @@ struct Port : PORT::Output, PIN::Input {
 
   // Select bit within I/O port
   template <uint8_t BIT>
-  struct Bit : Port<
+  using Bit = Port<
     typename DDR::template Bit<BIT>,
     typename PORT::template Bit<BIT>,
-    typename PIN::template Bit<BIT>> {
-
-    // Invert output bit
-    static void flip() {
-      PIN::template Bit<BIT>::set(); //< Set bit BIT in PIN to flip bit in PORT
-    }
-  };
+    typename PIN::template Bit<BIT>>;
 
   // Select masked region within I/O port
   template <uint8_t MASK>
@@ -32,6 +26,11 @@ struct Port : PORT::Output, PIN::Input {
     typename PORT::template Mask<MASK>,
     typename PIN::template Mask<MASK>>;
 
+  // Invert output bits
+  static void flip() {
+    PIN::set(); //< Set bits in PIN to flip bits in PORT
+  }
+
   // XOR output register with value
   static void bitwise_xor(uint8_t value) {
     PIN::write(value); //< Set bits in PIN to flip (xor) bits in PORT
@@ -39,19 +38,19 @@ struct Port : PORT::Output, PIN::Input {
 
   // Configure port as output
   static void config_output() {
-    DDR::write(DDR::MASK); //< Set bits in DDR to select write mode
+    DDR::set(); //< Set bits in DDR to select write mode
   }
 
   // Configure port as input
   static void config_input() {
-    PORT::write(0); //< Clear bits in PORT to disable pullups
-    DDR::write(0); //< Clear bits in DDR to select read mode
+    PORT::clear(); //< Clear bits in PORT to disable pullups
+    DDR::clear(); //< Clear bits in DDR to select read mode
   }
 
   // Configure port as input with pullup registers
   static void config_input_pullups() {
-    PORT::write(PORT::MASK); //< Set bits in PORT to enable pullups
-    DDR::write(0); //< Clear bits in DDR to select read mode
+    PORT::set(); //< Set bits in PORT to enable pullups
+    DDR::clear(); //< Clear bits in DDR to select read mode
   }
 };
 
@@ -61,7 +60,12 @@ struct PortNull {
   static void bitwise_or(uint8_t) {}
   static void bitwise_and(uint8_t) {}
   static void write(uint8_t) {}
+  static void set() {}
+  static void clear() {}
+  static void flip() {}
   static uint8_t read() { return 0; }
+  static bool is_set() { return false; }
+  static bool is_clear() { return true; }
   static void config_output() {}
   static void config_input() {}
   static void config_input_pullups() {}
@@ -93,9 +97,37 @@ struct PortJoin {
     Port2::write(value);
   }
 
+  // Set bits in both ports
+  static void set() {
+    Port1::set();
+    Port2::set();
+  }
+
+  // Clear bits in both ports
+  static void clear() {
+    Port1::clear();
+    Port2::clear();
+  }
+
+  // Flip bits in both ports
+  static void flip() {
+    Port1::flip();
+    Port2::flip();
+  }
+
   // Read value from both ports
   static uint8_t read() {
     return Port1::read() | Port2::read();
+  }
+
+  // Return true if both ports are set
+  static bool is_set() {
+    return Port1::is_set() && Port2::is_set();
+  }
+
+  // Return true if both ports are clear
+  static bool is_clear() {
+    return Port1::is_clear() && Port2::is_clear();
   }
 
   // Select write mode for both ports
@@ -143,9 +175,37 @@ struct Port16 {
     PortLSB::write(value & 0xFF);
   }
 
+  // Set bits in both ports
+  static void set() {
+    PortMSB::set();
+    PortLSB::set();
+  }
+
+  // Clear bits in both ports
+  static void clear() {
+    PortMSB::clear();
+    PortLSB::clear();
+  }
+
+  // Flip bits in both ports
+  static void flip() {
+    PortMSB::flip();
+    PortLSB::flip();
+  }
+
   // Read 16-bit value from high and low ports
   static uint16_t read() {
     return uint16_t(PortMSB::read()) * 0x100 | PortLSB::read();
+  }
+
+  // Return true if both ports are set
+  static bool is_set() {
+    return PortMSB::is_set() && PortLSB::is_set();
+  }
+
+  // Return true if both ports are clear
+  static bool is_clear() {
+    return PortMSB::is_clear() && PortLSB::is_clear();
   }
 
   // Select write mode for both ports
@@ -183,7 +243,7 @@ struct Port16 {
     static const uint8_t MASK = M; \
     /* Select single bit within register */ \
     template <uint8_t BIT> \
-    using Bit = RegBit##REG<BIT>; \
+    using Bit = RegMask##REG<1 << BIT>; \
     /* Select masked subfield within register */ \
     template <uint8_t SUBMASK> \
     using Mask = RegMask##REG<SUBMASK>; \
@@ -195,18 +255,30 @@ struct Port16 {
     static_assert(MASK == 0xFF, \
       "Unmasked register should have MASK 0xFF"); \
     struct Input { \
-      /* Read from I/O register; emits IN */ \
+      /* Read from I/O register; emits [IN] */ \
       static uint8_t read() { return (REG); } \
+      /* Test if bits are clear; `if (clear)` may emit [SBIS] */ \
+      static bool is_clear() { return (REG) == 0; } \
+      /* Test if bits are set; `if (set)` may emit [SBIC] */ \
+      static bool is_set() { return (REG) == MASK; } \
     }; \
     static constexpr auto read = &Input::read; \
+    static constexpr auto is_clear = &Input::is_clear; \
+    static constexpr auto is_set = &Input::is_set; \
     struct Output { \
-      /* Write to I/O register; emits OUT */ \
+      /* Set bits; emits [(LDI) OUT] */ \
+      static void set() { (REG) = MASK; } \
+      /* Clear bits; emits [IN ANDI OUT] or [CBI] */ \
+      static void clear() { (REG) = ~MASK; } \
+      /* Write to I/O register; emits [(LDI) OUT] */ \
       static void write(uint8_t value) { (REG) = value; } \
-      /* Apply bitwise OR; emits to IN, OR, OUT */ \
+      /* Apply bitwise OR; emits [IN, OR, OUT] */ \
       static void bitwise_or(uint8_t value) { (REG) |= value; } \
-      /* Apply bitwise AND; emits to IN, AND, OUT */ \
+      /* Apply bitwise AND; emits [IN, AND, OUT] */ \
       static void bitwise_and(uint8_t value) { (REG) &= value; } \
     }; \
+    static constexpr auto set = &Output::set; \
+    static constexpr auto clear = &Output::clear; \
     static constexpr auto write = &Output::write; \
     static constexpr auto bitwise_or = &Output::bitwise_or; \
     static constexpr auto bitwise_and = &Output::bitwise_and; \
@@ -220,9 +292,19 @@ struct Port16 {
     struct Input { \
       /* Read from I/O register; emits IN, ANDI */ \
       static uint8_t read() { return (REG) & MASK; } \
+      /* Test if bits are clear; `if (clear)` may emit [SBIS] */ \
+      static bool is_clear() { return ((REG) & MASK) == 0; } \
+      /* Test if bits are set; `if (set)` may emit [SBIC] */ \
+      static bool is_set() { return ((REG) & MASK) == MASK; } \
     }; \
     static constexpr auto read = &Input::read; \
+    static constexpr auto is_clear = &Input::is_clear; \
+    static constexpr auto is_set = &Input::is_set; \
     struct Output { \
+      /* Set bits; emits [IN, ORI, OUT] or [SBI] */ \
+      static void set() { (REG) |= MASK; } \
+      /* Clear bits; emits [IN ANDI OUT] or [CBI] */ \
+      static void clear() { (REG) &= ~MASK; } \
       /* Write to I/O register; emits IN, ANDI, (ANDI,) OR, OUT */ \
       static void write(uint8_t value) { (REG) = ((REG) & ~MASK) | (value & MASK); } \
       /* Apply bitwise OR; emits to IN, (ANDI,) OR, OUT */ \
@@ -230,32 +312,11 @@ struct Port16 {
       /* Apply bitwise AND; emits to IN, (ORI,) AND, OUT */ \
       static void bitwise_and(uint8_t value) { (REG) &= value | ~MASK; } \
     }; \
+    static constexpr auto set = &Output::set; \
+    static constexpr auto clear = &Output::clear; \
     static constexpr auto write = &Output::write; \
     static constexpr auto bitwise_or = &Output::bitwise_or; \
     static constexpr auto bitwise_and = &Output::bitwise_and; \
-  }; \
-  \
-  /* Single bit register operations */ \
-  template <uint8_t BIT, uint8_t MASK> \
-  struct RegBit##REG : RegMask##REG<MASK> { \
-    static_assert(MASK == 1 << BIT, \
-      "Bit register MASK parameter should be set to 1 << BIT"); \
-    struct Output : RegMask##REG<MASK>::Output { \
-      /* Set bit; emits SBI */ \
-      static void set() { (REG) |= MASK; } \
-      /* Clear bit; emits CBI */ \
-      static void clear() { (REG) &= ~MASK; } \
-      /* Test if bit is clear; use with `if (is_clear)` to emit SBIS */ \
-    }; \
-    static constexpr auto set = &Output::set; \
-    static constexpr auto clear = &Output::clear; \
-    struct Input : RegMask##REG<MASK>::Input { \
-      static bool is_clear() { return !((REG) & MASK); } \
-      /* Test if bit is set; use with `if (set)` to emit SBIC */ \
-      static bool is_set() { return !is_clear(); } \
-    }; \
-    static constexpr auto is_clear = &Input::is_clear; \
-    static constexpr auto is_set = &Input::is_set; \
   };
 
 #define uIO_PIN(X, N) \
