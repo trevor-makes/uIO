@@ -333,7 +333,7 @@ struct Port16 {
 // TODO define masks for ports with less than 8 pins?
 // TODO ^ macro to generate PinXN only for unmasked pins?
 // ^^ maybe remove PinXN from port macro and just manually generate Arduino digital pin defs?
-#if defined(ARDUINO_AVR_UNO)
+#if defined(ARDUINO_AVR_UNO) || defined(ARDUINO_AVR_NANO)
 uIO_PORT(B);
 uIO_PORT(C);
 uIO_PORT(D);
