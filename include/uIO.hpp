@@ -269,7 +269,7 @@ struct Port16 {
       /* Set bits; emits [(LDI) OUT] */ \
       static inline void set() { (REG) = MASK; } \
       /* Clear bits; emits [IN ANDI OUT] or [CBI] */ \
-      static inline void clear() { (REG) = ~MASK; } \
+      static inline void clear() { (REG) = uint8_t(~MASK); } \
       /* Write to I/O register; emits [(LDI) OUT] */ \
       static inline void write(uint8_t value) { (REG) = value; } \
       /* Apply bitwise OR; emits [IN, OR, OUT] */ \
@@ -304,13 +304,13 @@ struct Port16 {
       /* Set bits; emits [IN, ORI, OUT] or [SBI] */ \
       static inline void set() { (REG) |= MASK; } \
       /* Clear bits; emits [IN ANDI OUT] or [CBI] */ \
-      static inline void clear() { (REG) &= ~MASK; } \
+      static inline void clear() { (REG) &= uint8_t(~MASK); } \
       /* Write to I/O register; emits IN, ANDI, (ANDI,) OR, OUT */ \
-      static inline void write(uint8_t value) { (REG) = ((REG) & ~MASK) | (value & MASK); } \
+      static inline void write(uint8_t value) { (REG) = ((REG) & uint8_t(~MASK)) | (value & MASK); } \
       /* Apply bitwise OR; emits to IN, (ANDI,) OR, OUT */ \
       static inline void bitwise_or(uint8_t value) { (REG) |= value & MASK; } \
       /* Apply bitwise AND; emits to IN, (ORI,) AND, OUT */ \
-      static inline void bitwise_and(uint8_t value) { (REG) &= value | ~MASK; } \
+      static inline void bitwise_and(uint8_t value) { (REG) &= value | uint8_t(~MASK); } \
     }; \
     static constexpr auto set = &Output::set; \
     static constexpr auto clear = &Output::clear; \
