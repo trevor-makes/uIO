@@ -27,28 +27,28 @@ struct Port : PORT::Output, PIN::Input {
     typename PIN::template Mask<MASK>>;
 
   // Invert output bits
-  static void flip() {
+  static inline void flip() {
     PIN::set(); //< Set bits in PIN to flip bits in PORT
   }
 
   // XOR output register with value
-  static void bitwise_xor(uint8_t value) {
+  static inline void bitwise_xor(uint8_t value) {
     PIN::write(value); //< Set bits in PIN to flip (xor) bits in PORT
   }
 
   // Configure port as output
-  static void config_output() {
+  static inline void config_output() {
     DDR::set(); //< Set bits in DDR to select write mode
   }
 
   // Configure port as input
-  static void config_input() {
+  static inline void config_input() {
     PORT::clear(); //< Clear bits in PORT to disable pullups
     DDR::clear(); //< Clear bits in DDR to select read mode
   }
 
   // Configure port as input with pullup registers
-  static void config_input_pullups() {
+  static inline void config_input_pullups() {
     PORT::set(); //< Set bits in PORT to enable pullups
     DDR::clear(); //< Clear bits in DDR to select read mode
   }
@@ -56,94 +56,94 @@ struct Port : PORT::Output, PIN::Input {
 
 // Virtual port that discards writes
 struct PortNull {
-  static void bitwise_xor(uint8_t) {}
-  static void bitwise_or(uint8_t) {}
-  static void bitwise_and(uint8_t) {}
-  static void write(uint8_t) {}
-  static void set() {}
-  static void clear() {}
-  static void flip() {}
-  static uint8_t read() { return 0; }
-  static bool is_set() { return false; }
-  static bool is_clear() { return true; }
-  static void config_output() {}
-  static void config_input() {}
-  static void config_input_pullups() {}
+  static inline void bitwise_xor(uint8_t) {}
+  static inline void bitwise_or(uint8_t) {}
+  static inline void bitwise_and(uint8_t) {}
+  static inline void write(uint8_t) {}
+  static inline void set() {}
+  static inline void clear() {}
+  static inline void flip() {}
+  static inline uint8_t read() { return 0; }
+  static inline bool is_set() { return false; }
+  static inline bool is_clear() { return true; }
+  static inline void config_output() {}
+  static inline void config_input() {}
+  static inline void config_input_pullups() {}
 };
 
 template <typename Port1, typename Port2>
 struct PortJoin {
   // XOR value to both ports
-  static void bitwise_xor(uint8_t value) {
+  static inline void bitwise_xor(uint8_t value) {
     Port1::bitwise_xor(value);
     Port2::bitwise_xor(value);
   }
 
   // OR value to both ports
-  static void bitwise_or(uint8_t value) {
+  static inline void bitwise_or(uint8_t value) {
     Port1::bitwise_or(value);
     Port2::bitwise_or(value);
   }
 
   // AND value to both ports
-  static void bitwise_and(uint8_t value) {
+  static inline void bitwise_and(uint8_t value) {
     Port1::bitwise_and(value);
     Port2::bitwise_and(value);
   }
 
   // Write value to both ports
-  static void write(uint8_t value) {
+  static inline void write(uint8_t value) {
     Port1::write(value);
     Port2::write(value);
   }
 
   // Set bits in both ports
-  static void set() {
+  static inline void set() {
     Port1::set();
     Port2::set();
   }
 
   // Clear bits in both ports
-  static void clear() {
+  static inline void clear() {
     Port1::clear();
     Port2::clear();
   }
 
   // Flip bits in both ports
-  static void flip() {
+  static inline void flip() {
     Port1::flip();
     Port2::flip();
   }
 
   // Read value from both ports
-  static uint8_t read() {
+  static inline uint8_t read() {
     return Port1::read() | Port2::read();
   }
 
   // Return true if both ports are set
-  static bool is_set() {
+  static inline bool is_set() {
     return Port1::is_set() && Port2::is_set();
   }
 
   // Return true if both ports are clear
-  static bool is_clear() {
+  static inline bool is_clear() {
     return Port1::is_clear() && Port2::is_clear();
   }
 
   // Select write mode for both ports
-  static void config_output() {
+  static inline void config_output() {
     Port1::config_output();
     Port2::config_output();
   }
 
   // Select read mode for both ports
-  static void config_input() {
+  static inline void config_input() {
     Port1::config_input();
     Port2::config_input();
   }
 
   // Select read mode with pullups on both ports
-  static void config_input_pullups() {
+  static inline void config_input_pullups() {
     Port1::config_input_pullups();
     Port2::config_input_pullups();
   }
@@ -152,76 +152,76 @@ struct PortJoin {
 template <typename PortLSB, typename PortMSB>
 struct Port16 {
   // XOR 16-bit value to high and low ports
-  static void bitwise_xor(uint16_t value) {
+  static inline void bitwise_xor(uint16_t value) {
     PortMSB::bitwise_xor(value / 0x100);
     PortLSB::bitwise_xor(value & 0xFF);
   }
 
   // OR value to high and low ports
-  static void bitwise_or(uint16_t value) {
+  static inline void bitwise_or(uint16_t value) {
     PortMSB::bitwise_or(value / 0x100);
     PortLSB::bitwise_or(value & 0xFF);
   }
 
   // AND value to high and low ports
-  static void bitwise_and(uint16_t value) {
+  static inline void bitwise_and(uint16_t value) {
     PortMSB::bitwise_and(value / 0x100);
     PortLSB::bitwise_and(value & 0xFF);
   }
 
   // Write 16-bit value to high and low ports
-  static void write(uint16_t value) {
+  static inline void write(uint16_t value) {
     PortMSB::write(value / 0x100);
     PortLSB::write(value & 0xFF);
   }
 
   // Set bits in both ports
-  static void set() {
+  static inline void set() {
     PortMSB::set();
     PortLSB::set();
   }
 
   // Clear bits in both ports
-  static void clear() {
+  static inline void clear() {
     PortMSB::clear();
     PortLSB::clear();
   }
 
   // Flip bits in both ports
-  static void flip() {
+  static inline void flip() {
     PortMSB::flip();
     PortLSB::flip();
   }
 
   // Read 16-bit value from high and low ports
-  static uint16_t read() {
+  static inline uint16_t read() {
     return uint16_t(PortMSB::read()) * 0x100 | PortLSB::read();
   }
 
   // Return true if both ports are set
-  static bool is_set() {
+  static inline bool is_set() {
     return PortMSB::is_set() && PortLSB::is_set();
   }
 
   // Return true if both ports are clear
-  static bool is_clear() {
+  static inline bool is_clear() {
     return PortMSB::is_clear() && PortLSB::is_clear();
   }
 
   // Select write mode for both ports
-  static void config_output() {
+  static inline void config_output() {
     PortMSB::config_output();
     PortLSB::config_output();
   }
 
   // Select read mode for both ports
-  static void config_input() {
+  static inline void config_input() {
     PortMSB::config_input();
     PortLSB::config_input();
   }
 
   // Select read mode with pullups for both ports
-  static void config_input_pullups() {
+  static inline void config_input_pullups() {
     PortMSB::config_input_pullups();
     PortLSB::config_input_pullups();
   }
@@ -256,26 +256,26 @@ struct Port16 {
       "Unmasked register should have MASK 0xFF"); \
     struct Input { \
       /* Read from I/O register; emits [IN] */ \
-      static uint8_t read() { return (REG); } \
+      static inline uint8_t read() { return (REG); } \
       /* Test if bits are clear; `if (clear)` may emit [SBIS] */ \
-      static bool is_clear() { return (REG) == 0; } \
+      static inline bool is_clear() { return (REG) == 0; } \
       /* Test if bits are set; `if (set)` may emit [SBIC] */ \
-      static bool is_set() { return (REG) == MASK; } \
+      static inline bool is_set() { return (REG) == MASK; } \
     }; \
     static constexpr auto read = &Input::read; \
     static constexpr auto is_clear = &Input::is_clear; \
     static constexpr auto is_set = &Input::is_set; \
     struct Output { \
       /* Set bits; emits [(LDI) OUT] */ \
-      static void set() { (REG) = MASK; } \
+      static inline void set() { (REG) = MASK; } \
       /* Clear bits; emits [IN ANDI OUT] or [CBI] */ \
-      static void clear() { (REG) = ~MASK; } \
+      static inline void clear() { (REG) = ~MASK; } \
       /* Write to I/O register; emits [(LDI) OUT] */ \
-      static void write(uint8_t value) { (REG) = value; } \
+      static inline void write(uint8_t value) { (REG) = value; } \
       /* Apply bitwise OR; emits [IN, OR, OUT] */ \
-      static void bitwise_or(uint8_t value) { (REG) |= value; } \
+      static inline void bitwise_or(uint8_t value) { (REG) |= value; } \
       /* Apply bitwise AND; emits [IN, AND, OUT] */ \
-      static void bitwise_and(uint8_t value) { (REG) &= value; } \
+      static inline void bitwise_and(uint8_t value) { (REG) &= value; } \
     }; \
     static constexpr auto set = &Output::set; \
     static constexpr auto clear = &Output::clear; \
@@ -291,26 +291,26 @@ struct Port16 {
       "Masked register should have non-zero MASK less than 0xFF"); \
     struct Input { \
       /* Read from I/O register; emits IN, ANDI */ \
-      static uint8_t read() { return (REG) & MASK; } \
+      static inline uint8_t read() { return (REG) & MASK; } \
       /* Test if bits are clear; `if (clear)` may emit [SBIS] */ \
-      static bool is_clear() { return ((REG) & MASK) == 0; } \
+      static inline bool is_clear() { return ((REG) & MASK) == 0; } \
       /* Test if bits are set; `if (set)` may emit [SBIC] */ \
-      static bool is_set() { return ((REG) & MASK) == MASK; } \
+      static inline bool is_set() { return ((REG) & MASK) == MASK; } \
     }; \
     static constexpr auto read = &Input::read; \
     static constexpr auto is_clear = &Input::is_clear; \
     static constexpr auto is_set = &Input::is_set; \
     struct Output { \
       /* Set bits; emits [IN, ORI, OUT] or [SBI] */ \
-      static void set() { (REG) |= MASK; } \
+      static inline void set() { (REG) |= MASK; } \
       /* Clear bits; emits [IN ANDI OUT] or [CBI] */ \
-      static void clear() { (REG) &= ~MASK; } \
+      static inline void clear() { (REG) &= ~MASK; } \
       /* Write to I/O register; emits IN, ANDI, (ANDI,) OR, OUT */ \
-      static void write(uint8_t value) { (REG) = ((REG) & ~MASK) | (value & MASK); } \
+      static inline void write(uint8_t value) { (REG) = ((REG) & ~MASK) | (value & MASK); } \
       /* Apply bitwise OR; emits to IN, (ANDI,) OR, OUT */ \
-      static void bitwise_or(uint8_t value) { (REG) |= value & MASK; } \
+      static inline void bitwise_or(uint8_t value) { (REG) |= value & MASK; } \
       /* Apply bitwise AND; emits to IN, (ORI,) AND, OUT */ \
-      static void bitwise_and(uint8_t value) { (REG) &= value | ~MASK; } \
+      static inline void bitwise_and(uint8_t value) { (REG) &= value | ~MASK; } \
     }; \
     static constexpr auto set = &Output::set; \
     static constexpr auto clear = &Output::clear; \
