@@ -6,13 +6,27 @@
 #include <stdint.h>
 
 // TODO make template utils header/lib (or get type_traits for AVR)
+namespace util {
+
 template <typename>
-struct RemoveVolatileRef;
+struct remove_volatile_reference;
 
 template <typename T>
-struct RemoveVolatileRef<volatile T&> {
-  using TYPE = T;
+struct remove_volatile_reference<volatile T&> {
+  using type = T;
 };
+
+template <typename TYPE1, typename TYPE2>
+struct is_same {
+  static constexpr const bool value = false;
+};
+
+template <typename TYPE>
+struct is_same<TYPE, TYPE> {
+  static constexpr const bool value = true;
+};
+
+} // namespace util
 
 namespace uIO {
 
@@ -85,9 +99,8 @@ struct PortNull {
 
 template <typename Port1, typename Port2>
 struct PortJoin {
-  // TODO need std::is_same or similar
-  //static_assert(Port1::TYPE == Port2::TYPE,
-  //  "Joined ports must have the same type");
+  static_assert(util::is_same<typename Port1::TYPE, typename Port2::TYPE>::value,
+    "Joined ports must have the same data type");
   using TYPE = typename Port1::TYPE;
 
   // XOR value to both ports
@@ -247,7 +260,7 @@ struct Port16 {
 };
 
 #define uIO_REG(REG) \
-  using TYPE_##REG = RemoveVolatileRef<decltype((REG))>::TYPE; \
+  using TYPE_##REG = util::remove_volatile_reference<decltype((REG))>::type; \
   \
   template <uint8_t BIT, \
     TYPE_##REG MASK = 1 << BIT> \
