@@ -11,6 +11,7 @@ template <typename DDR, typename PORT, typename PIN>
 struct Port : PORT::Output, PIN::Input {
   static_assert((DDR::MASK == PORT::MASK) && (PORT::MASK == PIN::MASK),
     "Parameters DDR, PORT, and PIN should have the same masks");
+  using TYPE = uint8_t;
 
   // Select bit within I/O port
   template <uint8_t BIT>
@@ -32,7 +33,7 @@ struct Port : PORT::Output, PIN::Input {
   }
 
   // XOR output register with value
-  static inline void bitwise_xor(uint8_t value) {
+  static inline void bitwise_xor(TYPE value) {
     PIN::write(value); //< Set bits in PIN to flip (xor) bits in PORT
   }
 
@@ -55,15 +56,17 @@ struct Port : PORT::Output, PIN::Input {
 };
 
 // Virtual port that discards writes
+template <typename T = uint8_t>
 struct PortNull {
-  static inline void bitwise_xor(uint8_t) {}
-  static inline void bitwise_or(uint8_t) {}
-  static inline void bitwise_and(uint8_t) {}
-  static inline void write(uint8_t) {}
+  using TYPE = T;
+  static inline void bitwise_xor(TYPE) {}
+  static inline void bitwise_or(TYPE) {}
+  static inline void bitwise_and(TYPE) {}
+  static inline void write(TYPE) {}
   static inline void set() {}
   static inline void clear() {}
   static inline void flip() {}
-  static inline uint8_t read() { return 0; }
+  static inline TYPE read() { return 0; }
   static inline bool is_set() { return false; }
   static inline bool is_clear() { return true; }
   static inline void config_output() {}
@@ -73,26 +76,32 @@ struct PortNull {
 
 template <typename Port1, typename Port2>
 struct PortJoin {
+  // TODO need std::is_same or similar
+  //static_assert(Port1::TYPE == Port2::TYPE,
+  //  "Joined ports must have the same type");
+  // TODO need to add TYPE to the Reg implementation
+  using TYPE = uint8_t;//typename Port1::TYPE;
+
   // XOR value to both ports
-  static inline void bitwise_xor(uint8_t value) {
+  static inline void bitwise_xor(TYPE value) {
     Port1::bitwise_xor(value);
     Port2::bitwise_xor(value);
   }
 
   // OR value to both ports
-  static inline void bitwise_or(uint8_t value) {
+  static inline void bitwise_or(TYPE value) {
     Port1::bitwise_or(value);
     Port2::bitwise_or(value);
   }
 
   // AND value to both ports
-  static inline void bitwise_and(uint8_t value) {
+  static inline void bitwise_and(TYPE value) {
     Port1::bitwise_and(value);
     Port2::bitwise_and(value);
   }
 
   // Write value to both ports
-  static inline void write(uint8_t value) {
+  static inline void write(TYPE value) {
     Port1::write(value);
     Port2::write(value);
   }
@@ -116,7 +125,7 @@ struct PortJoin {
   }
 
   // Read value from both ports
-  static inline uint8_t read() {
+  static inline TYPE read() {
     return Port1::read() | Port2::read();
   }
 
@@ -151,26 +160,28 @@ struct PortJoin {
 
 template <typename PortLSB, typename PortMSB>
 struct Port16 {
+  using TYPE = uint16_t;
+
   // XOR 16-bit value to high and low ports
-  static inline void bitwise_xor(uint16_t value) {
+  static inline void bitwise_xor(TYPE value) {
     PortMSB::bitwise_xor(value / 0x100);
     PortLSB::bitwise_xor(value & 0xFF);
   }
 
   // OR value to high and low ports
-  static inline void bitwise_or(uint16_t value) {
+  static inline void bitwise_or(TYPE value) {
     PortMSB::bitwise_or(value / 0x100);
     PortLSB::bitwise_or(value & 0xFF);
   }
 
   // AND value to high and low ports
-  static inline void bitwise_and(uint16_t value) {
+  static inline void bitwise_and(TYPE value) {
     PortMSB::bitwise_and(value / 0x100);
     PortLSB::bitwise_and(value & 0xFF);
   }
 
   // Write 16-bit value to high and low ports
-  static inline void write(uint16_t value) {
+  static inline void write(TYPE value) {
     PortMSB::write(value / 0x100);
     PortLSB::write(value & 0xFF);
   }
@@ -194,18 +205,18 @@ struct Port16 {
   }
 
   // Read 16-bit value from high and low ports
-  static inline uint16_t read() {
-    return uint16_t(PortMSB::read()) * 0x100 | PortLSB::read();
+  static inline TYPE read() {
+    return PortLSB::read() | (PortMSB::read() * 0x100);
   }
 
   // Return true if both ports are set
   static inline bool is_set() {
-    return PortMSB::is_set() && PortLSB::is_set();
+    return PortLSB::is_set() && PortMSB::is_set();
   }
 
   // Return true if both ports are clear
   static inline bool is_clear() {
-    return PortMSB::is_clear() && PortLSB::is_clear();
+    return PortLSB::is_clear() && PortMSB::is_clear();
   }
 
   // Select write mode for both ports
