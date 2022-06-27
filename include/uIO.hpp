@@ -26,6 +26,24 @@ struct is_same<TYPE, TYPE> {
   static constexpr const bool value = true;
 };
 
+template <typename>
+struct extend_unsigned;
+
+template <>
+struct extend_unsigned<uint8_t> {
+  using type = uint16_t;
+};
+
+template <>
+struct extend_unsigned<uint16_t> {
+  using type = uint32_t;
+};
+
+template <>
+struct extend_unsigned<uint32_t> {
+  using type = uint64_t;
+};
+
 } // namespace util
 
 namespace uIO {
@@ -98,9 +116,9 @@ struct PortNull {
 };
 
 template <typename Port1, typename Port2>
-struct PortJoin {
+struct Overlay {
   static_assert(util::is_same<typename Port1::TYPE, typename Port2::TYPE>::value,
-    "Joined ports must have the same data type");
+    "Overlain ports must have the same data type");
   using TYPE = typename Port1::TYPE;
 
   // XOR value to both ports
@@ -179,32 +197,35 @@ struct PortJoin {
   }
 };
 
-template <typename PortLSB, typename PortMSB>
-struct Port16 {
-  using TYPE = uint16_t;
+template <typename PortLSB, typename PortMSB = uIO::PortNull<typename PortLSB::TYPE>>
+struct Extend {
+  static_assert(util::is_same<typename PortLSB::TYPE, typename PortMSB::TYPE>::value,
+    "Can only extend pairs of same type");
+  using TYPE = typename util::extend_unsigned<typename PortLSB::TYPE>::type;
+  static constexpr uint8_t SHIFT = sizeof(typename PortLSB::TYPE) * 8;
 
-  // XOR 16-bit value to high and low ports
+  // XOR extended value to high and low ports
   static inline void bitwise_xor(TYPE value) {
-    PortMSB::bitwise_xor(value / 0x100);
-    PortLSB::bitwise_xor(value & 0xFF);
+    PortMSB::bitwise_xor(value >> SHIFT);
+    PortLSB::bitwise_xor(value);
   }
 
-  // OR value to high and low ports
+  // OR extended value to high and low ports
   static inline void bitwise_or(TYPE value) {
-    PortMSB::bitwise_or(value / 0x100);
-    PortLSB::bitwise_or(value & 0xFF);
+    PortMSB::bitwise_or(value >> SHIFT);
+    PortLSB::bitwise_or(value);
   }
 
-  // AND value to high and low ports
+  // AND extended value to high and low ports
   static inline void bitwise_and(TYPE value) {
-    PortMSB::bitwise_and(value / 0x100);
-    PortLSB::bitwise_and(value & 0xFF);
+    PortMSB::bitwise_and(value >> SHIFT);
+    PortLSB::bitwise_and(value);
   }
 
-  // Write 16-bit value to high and low ports
+  // Write extended value to high and low ports
   static inline void write(TYPE value) {
-    PortMSB::write(value / 0x100);
-    PortLSB::write(value & 0xFF);
+    PortMSB::write(value >> SHIFT);
+    PortLSB::write(value);
   }
 
   // Set bits in both ports
@@ -225,9 +246,9 @@ struct Port16 {
     PortLSB::flip();
   }
 
-  // Read 16-bit value from high and low ports
+  // Read extended value from high and low ports
   static inline TYPE read() {
-    return PortLSB::read() | (PortMSB::read() * 0x100);
+    return TYPE(PortLSB::read()) | (TYPE(PortMSB::read()) << SHIFT);
   }
 
   // Return true if both ports are set
