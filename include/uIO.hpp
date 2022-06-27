@@ -5,13 +5,22 @@
 #include <avr/io.h>
 #include <stdint.h>
 
+// TODO make template utils header/lib (or get type_traits for AVR)
+template <typename>
+struct RemoveVolatileRef;
+
+template <typename T>
+struct RemoveVolatileRef<volatile T&> {
+  using TYPE = T;
+};
+
 namespace uIO {
 
 template <typename DDR, typename PORT, typename PIN>
 struct Port : PORT::Output, PIN::Input {
   static_assert((DDR::MASK == PORT::MASK) && (PORT::MASK == PIN::MASK),
     "Parameters DDR, PORT, and PIN should have the same masks");
-  using TYPE = uint8_t;
+  using TYPE = typename PORT::TYPE;
 
   // Select bit within I/O port
   template <uint8_t BIT>
@@ -79,8 +88,7 @@ struct PortJoin {
   // TODO need std::is_same or similar
   //static_assert(Port1::TYPE == Port2::TYPE,
   //  "Joined ports must have the same type");
-  // TODO need to add TYPE to the Reg implementation
-  using TYPE = uint8_t;//typename Port1::TYPE;
+  using TYPE = typename Port1::TYPE;
 
   // XOR value to both ports
   static inline void bitwise_xor(TYPE value) {
@@ -251,6 +259,7 @@ struct Port16 {
   \
   template <uint8_t M> \
   struct RegBase##REG { \
+    using TYPE = RemoveVolatileRef<decltype((REG))>::TYPE; \
     static const uint8_t MASK = M; \
     /* Select single bit within register */ \
     template <uint8_t BIT> \
