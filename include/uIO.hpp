@@ -115,6 +115,26 @@ struct PortNull {
   static inline void config_input_pullups() {}
 };
 
+template <typename PORT, uint8_t BITS>
+struct RightShift : PORT {
+  using TYPE = typename PORT::TYPE;
+  static inline void bitwise_xor(TYPE value) { PORT::bitwise_xor(value << BITS); }
+  static inline void bitwise_or(TYPE value) { PORT::bitwise_or(value << BITS); }
+  static inline void bitwise_and(TYPE value) { PORT::bitwise_and(value << BITS); }
+  static inline void write(TYPE value) { PORT::write(value << BITS); }
+  static inline TYPE read() { return PORT::read() >> BITS; }
+};
+
+template <typename PORT, uint8_t BITS>
+struct LeftShift : PORT {
+  using TYPE = typename PORT::TYPE;
+  static inline void bitwise_xor(TYPE value) { PORT::bitwise_xor(value >> BITS); }
+  static inline void bitwise_or(TYPE value) { PORT::bitwise_or(value >> BITS); }
+  static inline void bitwise_and(TYPE value) { PORT::bitwise_and(value >> BITS); }
+  static inline void write(TYPE value) { PORT::write(value >> BITS); }
+  static inline TYPE read() { return PORT::read() << BITS; }
+};
+
 template <typename Port1, typename Port2>
 struct Overlay {
   static_assert(util::is_same<typename Port1::TYPE, typename Port2::TYPE>::value,
