@@ -53,6 +53,7 @@ struct Port : PORT::Output, PIN::Input {
   static_assert((DDR::MASK == PORT::MASK) && (PORT::MASK == PIN::MASK),
     "Parameters DDR, PORT, and PIN should have the same masks");
   using TYPE = typename PORT::TYPE;
+  static const TYPE MASK = PORT::MASK;
 
   // Select bit within I/O port
   template <uint8_t BIT>
@@ -100,6 +101,7 @@ struct Port : PORT::Output, PIN::Input {
 template <typename T = uint8_t>
 struct PortNull {
   using TYPE = T;
+  static const TYPE MASK = 0;
   static inline void bitwise_xor(TYPE) {}
   static inline void bitwise_or(TYPE) {}
   static inline void bitwise_and(TYPE) {}
@@ -118,6 +120,7 @@ struct PortNull {
 template <typename PORT, uint8_t BITS>
 struct RightShift : PORT {
   using TYPE = typename PORT::TYPE;
+  static const TYPE MASK = PORT::MASK >> BITS;
   static inline void bitwise_xor(TYPE value) { PORT::bitwise_xor(value << BITS); }
   static inline void bitwise_or(TYPE value) { PORT::bitwise_or(value << BITS); }
   static inline void bitwise_and(TYPE value) { PORT::bitwise_and(value << BITS); }
@@ -128,6 +131,7 @@ struct RightShift : PORT {
 template <typename PORT, uint8_t BITS>
 struct LeftShift : PORT {
   using TYPE = typename PORT::TYPE;
+  static const TYPE MASK = PORT::MASK << BITS;
   static inline void bitwise_xor(TYPE value) { PORT::bitwise_xor(value >> BITS); }
   static inline void bitwise_or(TYPE value) { PORT::bitwise_or(value >> BITS); }
   static inline void bitwise_and(TYPE value) { PORT::bitwise_and(value >> BITS); }
@@ -139,7 +143,10 @@ template <typename Port1, typename Port2>
 struct Overlay {
   static_assert(util::is_same<typename Port1::TYPE, typename Port2::TYPE>::value,
     "Overlain ports must have the same data type");
+  static_assert((Port1::MASK & Port2::MASK) == 0,
+    "Overlain ports must have non-overlapping masks");
   using TYPE = typename Port1::TYPE;
+  static const TYPE MASK = Port1::MASK | Port2::MASK;
 
   // XOR value to both ports
   static inline void bitwise_xor(TYPE value) {
@@ -223,6 +230,7 @@ struct Extend {
     "Can only extend pairs of same type");
   using TYPE = typename util::extend_unsigned<typename PortLSB::TYPE>::type;
   static constexpr uint8_t SHIFT = sizeof(typename PortLSB::TYPE) * 8;
+  static const TYPE MASK = PortLSB::MASK | (TYPE(PortMSB::MASK) << SHIFT);
 
   // XOR extended value to high and low ports
   static inline void bitwise_xor(TYPE value) {
