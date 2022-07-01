@@ -44,6 +44,33 @@ struct extend_unsigned<uint32_t> {
   using type = uint64_t;
 };
 
+// NOTE std::countr_zero added to <bit> in c++20
+//http://graphics.stanford.edu/~seander/bithacks.html#ZerosOnRightParallel
+template <typename T>
+constexpr uint8_t countr_zero(T v) {
+  return sizeof(T) * 8
+    - ((v & -v) ? 1 : 0)
+    - ((v & -v & 0x00000000FFFFFFFF) && sizeof(T) > 4 ? 32 : 0)
+    - ((v & -v & 0x0000FFFF0000FFFF) && sizeof(T) > 2 ? 16 : 0)
+    - ((v & -v & 0x00FF00FF00FF00FF) && sizeof(T) > 1 ? 8 : 0)
+    - ((v & -v & 0x0F0F0F0F0F0F0F0F) ? 4 : 0)
+    - ((v & -v & 0x3333333333333333) ? 2 : 0)
+    - ((v & -v & 0x5555555555555555) ? 1 : 0);
+}
+
+static_assert(countr_zero(uint8_t(0)) == 8);
+static_assert(countr_zero(uint16_t(0)) == 16);
+static_assert(countr_zero(uint32_t(0)) == 32);
+static_assert(countr_zero(uint64_t(0)) == 64);
+static_assert(countr_zero(1) == 0);
+static_assert(countr_zero(0x10) == 4);
+static_assert(countr_zero(0x100) == 8);
+static_assert(countr_zero(0x1000) == 12);
+static_assert(countr_zero(0x8000) == 15);
+static_assert(countr_zero(0x80000000) == 31);
+static_assert(countr_zero(0x8000000000000000) == 63);
+static_assert(countr_zero(0xF0F0F0F0) == 4);
+
 } // namespace util
 
 namespace uIO {
@@ -138,6 +165,9 @@ struct LeftShift : PORT {
   static inline void write(TYPE value) { PORT::write(value >> BITS); }
   static inline TYPE read() { return PORT::read() << BITS; }
 };
+
+template <typename PORT>
+using RightAlign = RightShift<PORT, util::countr_zero(PORT::MASK)>;
 
 template <typename Port1, typename Port2>
 struct Overlay {
