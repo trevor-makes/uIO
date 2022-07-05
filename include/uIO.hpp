@@ -85,17 +85,22 @@ constexpr uint8_t ilog2(T v) {
   return ilog2_impl<2 + ilog2_impl<1>(sizeof(T))>(v);
 }
 
-static_assert(ilog2(0) == 0);
-static_assert(ilog2(1) == 0);
-
+static_assert(ilog2(0x00) == 0);
+static_assert(ilog2(0x01) == 0);
+static_assert(ilog2(0x02) == 1);
+static_assert(ilog2(0x03) == 1);
+static_assert(ilog2(0x04) == 2);
+static_assert(ilog2(0x07) == 2);
+static_assert(ilog2(0x08) == 3);
+static_assert(ilog2(0x0F) == 3);
+static_assert(ilog2(0x10) == 4);
+static_assert(ilog2(0x1F) == 4);
+static_assert(ilog2(0x20) == 5);
+static_assert(ilog2(0x3F) == 5);
 static_assert(ilog2(0x40) == 6);
-static_assert(ilog2(0x55) == 6);
 static_assert(ilog2(0x7F) == 6);
-
 static_assert(ilog2(0x80) == 7);
-static_assert(ilog2(0xCC) == 7);
 static_assert(ilog2(0xFF) == 7);
-
 static_assert(ilog2(0xFFFF) == 15);
 static_assert(ilog2(0xFFFFFF) == 23);
 static_assert(ilog2(0xFFFFFFFF) == 31);
@@ -117,6 +122,18 @@ static_assert(countl_zero(uint32_t(0)) == 32);
 static_assert(countl_zero(uint32_t(1)) == 31);
 static_assert(countl_zero(uint32_t(0x80000000)) == 0);
 static_assert(countl_zero(uint32_t(0xF0F0F0F0)) == 0);
+
+template <typename T>
+constexpr uint8_t mask_width(T bits) {
+  return sizeof(T) * 8 - util::countl_zero(bits);
+}
+
+static_assert(mask_width(0) == 0);
+static_assert(mask_width(1) == 1);
+static_assert(mask_width(2) == 2);
+static_assert(mask_width(4) == 3);
+static_assert(mask_width(15) == 4);
+static_assert(mask_width(31) == 5);
 
 } // namespace util
 
@@ -302,7 +319,7 @@ struct Overlay {
 };
 
 template <typename PortLSB, typename PortMSB = uIO::PortNull<typename PortLSB::TYPE>>
-struct Extend {
+struct WordExtend {
   static_assert(util::is_same<typename PortLSB::TYPE, typename PortMSB::TYPE>::value,
     "Can only extend pairs of same type");
   using TYPE = typename util::extend_unsigned<typename PortLSB::TYPE>::type;
@@ -384,6 +401,13 @@ struct Extend {
     PortLSB::config_input_pullups();
   }
 };
+
+// TODO use WordExtend when mask width exceeds type width
+// TODO make variadic template 
+template <typename PORT_MSB, typename PORT_LSB>
+using BitExtend = Overlay<
+  LeftShift<RightAlign<PORT_MSB>, util::mask_width(RightAlign<PORT_LSB>::MASK)>,
+  RightAlign<PORT_LSB>>;
 
 #define uIO_REG(REG) \
   using TYPE_##REG = util::remove_volatile_reference<decltype((REG))>::type; \
