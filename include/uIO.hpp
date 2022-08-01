@@ -188,8 +188,26 @@ struct Overlay {
   }
 };
 
-template <typename PortLSB, typename PortMSB = uIO::PortNull<typename PortLSB::TYPE>>
-struct WordExtend {
+template <typename ...>
+struct WordExtend {};
+
+// Double the word size of Port (upper half discards writes and reads as 0)
+template <typename Port>
+struct WordExtend<Port> : WordExtend<PortNull<typename Port::TYPE>, Port> {};
+
+// Join three ports as one port with quadruple the word size
+template <typename Port2, typename Port1, typename Port0>
+struct WordExtend<Port2, Port1, Port0> :
+  WordExtend<WordExtend<Port2>, WordExtend<Port1, Port0>> {};
+
+// Join four ports as one port with quadruple the word size
+template <typename Port3, typename Port2, typename Port1, typename Port0>
+struct WordExtend<Port3, Port2, Port1, Port0> :
+  WordExtend<WordExtend<Port3, Port2>, WordExtend<Port1, Port0>> {};
+
+// Join two ports as one port with double the word size
+template <typename PortMSB, typename PortLSB>
+struct WordExtend<PortMSB, PortLSB> {
   static_assert(util::is_same<typename PortLSB::TYPE, typename PortMSB::TYPE>::value,
     "Can only extend pairs of same type");
   using TYPE = typename util::extend_unsigned<typename PortLSB::TYPE>::type;
