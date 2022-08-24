@@ -300,10 +300,6 @@ using BitExtend = Overlay<
 #define uIO_REG(REG) \
   using TYPE_##REG = util::remove_volatile_reference<decltype((REG))>::type; \
   \
-  template <uint8_t BIT, \
-    TYPE_##REG MASK = 1 << BIT> \
-  struct RegBit##REG; \
-  \
   template <TYPE_##REG MASK, \
     bool B = (MASK == TYPE_##REG(~0))> \
   struct RegMask##REG; \
@@ -392,15 +388,10 @@ using BitExtend = Overlay<
     static constexpr auto bitwise_and = &Output::bitwise_and; \
   };
 
-#define uIO_PIN(X, N) \
-  using Pin##X##N = Port##X::Bit<N>;
-
-// Define Reg[DDR#X, PORT#X, PIN#X], Port#X, Pin#X[0..7]
+// Define Reg[DDR#X, PORT#X, PIN#X], Port#X
 #define uIO_PORT(X) \
   uIO_REG(DDR##X) uIO_REG(PORT##X) uIO_REG(PIN##X) \
-  using Port##X = Port<RegDDR##X, RegPORT##X, RegPIN##X>; \
-  uIO_PIN(X, 0) uIO_PIN(X, 1) uIO_PIN(X, 2) uIO_PIN(X, 3) \
-  uIO_PIN(X, 4) uIO_PIN(X, 5) uIO_PIN(X, 6) uIO_PIN(X, 7)
+  using Port##X = Port<RegDDR##X, RegPORT##X, RegPIN##X>;
 
 // TODO include other registers, or just I/O?
 // TODO define masks for ports with less than 8 pins?
