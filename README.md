@@ -1,6 +1,6 @@
 # uIO
 
-**TODO!**
+**Deprecated! Merged into [core](https://github.com/trevor-makes/core)**
 
 This package is intended to be used with [PlatformIO](https://platformio.org/), but the source files can be manually copied into a project when using the Arduino IDE.
 
