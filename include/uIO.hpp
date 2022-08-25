@@ -80,6 +80,7 @@ struct PortNull {
 
 template <typename PORT, uint8_t BITS>
 struct RightShift : PORT {
+  static_assert(BITS <= util::countr_zero(PORT::MASK), "RightShift would underflow masked bits");
   using TYPE = typename PORT::TYPE;
   static const TYPE MASK = PORT::MASK >> BITS;
   static inline void bitwise_xor(TYPE value) { PORT::bitwise_xor(value << BITS); }
@@ -91,6 +92,7 @@ struct RightShift : PORT {
 
 template <typename PORT, uint8_t BITS>
 struct LeftShift : PORT {
+  static_assert(BITS <= util::countl_zero(PORT::MASK), "LeftShift would overflow masked bits");
   using TYPE = typename PORT::TYPE;
   static const TYPE MASK = PORT::MASK << BITS;
   static inline void bitwise_xor(TYPE value) { PORT::bitwise_xor(value >> BITS); }
